@@ -2,102 +2,181 @@
 
 namespace app\models;
 
-class User extends \yii\base\Object implements \yii\web\IdentityInterface
+use Yii;
+
+use yii\base\NotSupportedException;
+use yii\db\ActiveRecord;
+use yii\helpers\Security;
+use yii\web\IdentityInterface;
+use yii\data\ActiveDataProvider;
+use yii\behaviors\TimestampBehavior;
+use yii\db\Expression;
+
+
+class User extends ActiveRecord implements IdentityInterface
 {
-    public $id;
-    public $username;
-    public $password;
-    public $authKey;
-    public $accessToken;
+    /* public $id;
+     public $username;
+     public $password;
+    */
+    public $auth_key;
+    /* public $accessToken;
+     public $first_name;
+     public $last_name;
+     public $address;
+     public $city;
+     public $state;
+     public $zip;*/
+    public $countSameZip;
 
-    private static $users = [
-        '100' => [
-            'id' => '100',
-            'username' => 'admin',
-            'password' => 'admin',
-            'authKey' => 'test100key',
-            'accessToken' => '100-token',
-        ],
-        '101' => [
-            'id' => '101',
-            'username' => 'demo',
-            'password' => 'demo',
-            'authKey' => 'test101key',
-            'accessToken' => '101-token',
-        ],
-    ];
+    public static function tableName()
+    {
+        return 'tbl_users';
+    }
 
-    /**
-     * @inheritdoc
-     */
+    public function rules()
+    {
+        return [
+            [['username', 'password', 'first_name', 'last_name', 'address', 'city', 'state', 'zip'], 'required'],
+            [['zip'], 'integer'],
+            [['username', 'city', 'state'], 'string', 'max' => 20],
+            [['password'], 'string', 'max' => 100],
+            [['first_name'], 'string', 'max' => 30],
+            [['last_name'], 'string', 'max' => 40],
+            [['address'], 'string', 'max' => 80],
+            [['username'], 'unique']
+        ];
+    }
+
+    public function attributeLabels()
+    {
+        return [
+            'id' => 'ID',
+            'username' => 'Username',
+            'password' => 'Password',
+            'first_name' => 'First Name',
+            'last_name' => 'Last Name',
+            'address' => 'Address',
+            'city' => 'City',
+            'state' => 'State',
+            'zip' => 'Zip',
+        ];
+    }
+
+    /*public function getMjcRegistryitems()
+    {
+        return $this->hasMany(Cartitem::className(), ['create_user_id' => 'id']);
+    }
+
+    public function getMjcRegistrylists()
+    {
+        return $this->hasMany(CartList::className(), ['create_user_id' => 'id']);
+    }*/
+
     public static function findIdentity($id)
     {
-        return isset(self::$users[$id]) ? new static(self::$users[$id]) : null;
+        return static::findOne($id);
     }
 
-    /**
-     * @inheritdoc
-     */
     public static function findIdentityByAccessToken($token, $type = null)
     {
-        foreach (self::$users as $user) {
-            if ($user['accessToken'] === $token) {
-                return new static($user);
-            }
-        }
-
-        return null;
+        throw new NotSupportedException('"findIdentityByAccessToken" is not implemented.');
     }
 
-    /**
-     * Finds user by username
-     *
-     * @param  string      $username
-     * @return static|null
-     */
     public static function findByUsername($username)
     {
-        foreach (self::$users as $user) {
-            if (strcasecmp($user['username'], $username) === 0) {
-                return new static($user);
-            }
+        return static::findOne(['username' => $username]);
+    }
+
+    public static function findByUsernameAndPassword($username, $passwordMd5)
+    {
+        return static::findOne(['username' => $username, 'password' => $passwordMd5]);
+    }
+
+    public static function encryptPassword($password)
+    {
+        return sha1($password);
+    }
+
+    public static function findByPasswordResetToken($token)
+    {
+        $expire = Yii::$app->params['user.passwordResetTokenExpire'];
+        $parts = explode('_', $token);
+        $timestamp = (int)end($parts);
+        if ($timestamp + $expire < time()) {
+            // token expired
+            return null;
         }
 
-        return null;
+        return static::findOne([
+            'password_reset_token' => $token
+        ]);
     }
 
-    /**
-     * @inheritdoc
-     */
     public function getId()
     {
-        return $this->id;
+        return $this->getPrimaryKey();
     }
 
-    /**
-     * @inheritdoc
-     */
     public function getAuthKey()
     {
-        return $this->authKey;
+        return $this->auth_key;
     }
 
-    /**
-     * @inheritdoc
-     */
     public function validateAuthKey($authKey)
     {
-        return $this->authKey === $authKey;
+        return $this->getAuthKey() === $authKey;
     }
 
-    /**
-     * Validates password
-     *
-     * @param  string  $password password to validate
-     * @return boolean if password provided is valid for current user
-     */
-    public function validatePassword($password)
+    /*public function validatePassword($password)
     {
-        return $this->password === $password;
+        return $this->password === $password;//sha1($password);
+//        return Security::validatePassword($password, $this->password_hash);
+    }*/
+
+    public function setPassword($password)
+    {
+        $this->password = $password;//Security::generatePasswordHash($password);
+    }
+
+    public function generateAuthKey()
+    {
+        $this->auth_key = Security::generateRandomKey();
+    }
+
+    public function generatePasswordResetToken()
+    {
+        $this->password_reset_token = Security::generateRandomKey() . '_' . time();
+    }
+
+    public function removePasswordResetToken()
+    {
+        $this->password_reset_token = null;
+    }
+
+    public static function getDataChart()
+    {
+        $userGroupByZip = new ActiveDataProvider([
+            'query' => User::find()
+                ->select(['COUNT(zip) AS countSameZip', 'zip'])
+                ->groupBy(['zip']),
+        ]);
+
+        return $userGroupByZip;
+    }
+
+    public static function getAll()
+    {
+        return new ActiveDataProvider([
+            'query' => self::find(),
+        ]);
+    }
+
+
+    public function behaviors()
+    {
+        return [
+
+        ];
     }
 }
