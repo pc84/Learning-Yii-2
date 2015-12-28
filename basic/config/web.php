@@ -5,11 +5,13 @@ $params = require(__DIR__ . '/params.php');
 $config = [
     'id' => 'basic',
     'basePath' => dirname(__DIR__),
+    'name' => 'Call App test',
+    'defaultRoute' => 'user/index',
     'bootstrap' => ['log'],
     'components' => [
         'request' => [
             // !!! insert a secret key in the following (if it is empty) - this is required by cookie validation
-            'cookieValidationKey' => 'n8atsq4hDVNtBsyqN30CtL9srsJ2qKkk',
+            'cookieValidationKey' => 'sksdfkdmsfsasfksdnafsafkasmfksmdfasfsdf',
         ],
         'cache' => [
             'class' => 'yii\caching\FileCache',
@@ -17,6 +19,7 @@ $config = [
         'user' => [
             'identityClass' => 'app\models\User',
             'enableAutoLogin' => true,
+            'loginUrl' => ['user/login'],
         ],
         'errorHandler' => [
             'errorAction' => 'site/error',
@@ -48,7 +51,9 @@ if (YII_ENV_DEV) {
     $config['modules']['debug'] = [
         'class' => 'yii\debug\Module',
     ];
-
+    $config['modules']['utility'] = [
+        'class' => 'c006\utility\migration\Module',
+    ];
     $config['bootstrap'][] = 'gii';
     $config['modules']['gii'] = [
         'class' => 'yii\gii\Module',
