@@ -48,7 +48,7 @@ $this->params['breadcrumbs'][] = $this->title;
             <li>Do not work on style with bootstraps because was not requested. I do exactly as requested.
                 If you want to see another skills please let me know.
             </li>
-            <li>I never worked before with yii, could be better the solution, i'm sure.</li>
+            <li>I never worked before with yii, I'm sure must improve my yii knowledge.</li>
             <li>I do not write comments, I like write "clean code" that explain it self.</li>
             <li>Please send me all suggestions, I would like to receive feedback.</li>
         </ul>
